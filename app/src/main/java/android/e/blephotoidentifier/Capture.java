@@ -15,6 +15,8 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -24,7 +26,9 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -33,6 +37,14 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class Capture extends AppCompatActivity {
 
@@ -42,6 +54,8 @@ public class Capture extends AppCompatActivity {
     private static final int SEPARATOR_CHAR = 42;
     private static final ParcelUuid SERVICE_UUID =
             ParcelUuid.fromString("0000FEAA-0000-1000-8000-00805F9B34FB");
+    private static final String SERVER_IP = "192.168.1.81";
+    private static final String SERVER_PORT = "5000";
 
     private BluetoothManager manager;
     private BluetoothAdapter btAdapter;
@@ -119,6 +133,13 @@ public class Capture extends AppCompatActivity {
                 dispatchTakePictureIntent();
             }
         });
+        facial_recognition.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v){
+                sendNames(v);
+                connectServer(v);
+            }
+        });
     }
 
     public void scanLeDevice(final boolean enable) {
@@ -191,6 +212,117 @@ public class Capture extends AppCompatActivity {
         // Save a file: path for use with ACTION_VIEW intents
         currentPhotoPath = image.getAbsolutePath();
         return image;
+    }
+
+    void connectServer(View v){
+        String postUrl= "http://"+SERVER_IP+":"+SERVER_PORT+"/";
+
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inPreferredConfig = Bitmap.Config.RGB_565;
+        // Read BitMap by file path
+        Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPath, options);
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+        byte[] byteArray = stream.toByteArray();
+
+        RequestBody postBodyImage = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("image", "recognitionPic.jpg", RequestBody.create(MediaType.parse("image/*jpg"), byteArray))
+                .build();
+
+        postRequest(postUrl, postBodyImage);
+    }
+
+    void postRequest(String postUrl, RequestBody postBody) {
+
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(postUrl)
+                .post(postBody)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                // Cancel the post on failure.
+                call.cancel();
+                e.printStackTrace();
+
+                // In order to access the TextView inside the UI thread, the code is executed inside runOnUiThread()
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(),"Failed to Connect to Server",Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                // In order to access the TextView inside the UI thread, the code is executed inside runOnUiThread()
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            Toast.makeText(getApplicationContext(),response.body().string(),Toast.LENGTH_SHORT).show();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    void sendNames(View v){
+
+        String postUrl= "http://"+SERVER_IP+":"+SERVER_PORT+"/names";
+
+        String postBodyText="";
+        for (String name : names){
+            postBodyText += name + "*";
+        }
+        MediaType mediaType = MediaType.parse("text/plain; charset=utf-8");
+        RequestBody postBody = RequestBody.create(mediaType, postBodyText);
+
+        postNames(postUrl, postBody);
+    }
+
+    void postNames(String postUrl, RequestBody postBody) {
+
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(postUrl)
+                .post(postBody)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                // Cancel the post on failure.
+                call.cancel();
+
+                // In order to access the TextView inside the UI thread, the code is executed inside runOnUiThread()
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(),"Couldn't send names!",Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                // In order to access the TextView inside the UI thread, the code is executed inside runOnUiThread()
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                    }
+                });
+            }
+        });
     }
 
     private void setEnabledViews(boolean enabled, View... views) {
