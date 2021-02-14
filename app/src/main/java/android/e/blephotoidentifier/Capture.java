@@ -2,7 +2,6 @@ package android.e.blephotoidentifier;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
-
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
@@ -28,6 +27,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.tensorflow.lite.examples.posenet.lib.Posenet;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -37,6 +38,8 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -54,7 +57,7 @@ public class Capture extends AppCompatActivity {
     private static final int SEPARATOR_CHAR = 42;
     private static final ParcelUuid SERVICE_UUID =
             ParcelUuid.fromString("0000FEAA-0000-1000-8000-00805F9B34FB");
-    private static final String SERVER_IP = "192.168.1.81";
+    private static final String SERVER_IP = "192.168.1.218";
     private static final String SERVER_PORT = "5000";
 
     private BluetoothManager manager;
@@ -64,12 +67,16 @@ public class Capture extends AppCompatActivity {
     private List<ScanFilter> filters;
     private ArrayList<String> names = new ArrayList<String>();
     private HashMap<String,String> currentNames = new HashMap<String,String>();
+    private HashMap<String,String> currentShirts = new HashMap<String,String>();
+    private HashMap<String,String> currentPants = new HashMap<String,String>();
+    private HashMap<String,String> currentMoves = new HashMap<String,String>();
     String currentPhotoPath;
 
     private TextView people_list;
     private Button collect;
     private Button take_photo;
     private Button facial_recognition;
+    private Button tensorflow;
     private Button back;
 
     @Override
@@ -112,6 +119,7 @@ public class Capture extends AppCompatActivity {
         back = findViewById(R.id.back);
         take_photo = findViewById((R.id.take_photo));
         facial_recognition = findViewById(R.id.facial_recognition);
+        tensorflow = findViewById(R.id.tensorflow);
         collect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v){
@@ -140,6 +148,12 @@ public class Capture extends AppCompatActivity {
                 connectServer(v);
             }
         });
+        tensorflow.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v){
+                dispatchTensorFlowIntent();
+            }
+        });
     }
 
     public void scanLeDevice(final boolean enable) {
@@ -158,7 +172,7 @@ public class Capture extends AppCompatActivity {
             String address = result.getDevice().getName();
             byte[] pData = Assembler.gather(address, result.getScanRecord().getServiceData(SERVICE_UUID));
             if (pData != null) {
-                updateNames(pData);
+                update(pData);
             }
         }
 
@@ -195,6 +209,28 @@ public class Capture extends AppCompatActivity {
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
                 startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
             }
+        }
+    }
+
+    private void dispatchTensorFlowIntent() {
+        Intent intent = new Intent(this, CameraActivity.class);
+        startActivityForResult(intent,2);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+        super.onActivityResult(requestCode,resultCode,data);
+        if (requestCode == 2){
+            String result = data.getStringExtra("result");
+            String name = names.get(0);
+            if (result.equalsIgnoreCase(currentShirts.get(name))){
+                try{
+                    wait(2000);
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+            Toast.makeText(getApplicationContext(),name,Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -235,7 +271,13 @@ public class Capture extends AppCompatActivity {
 
     void postRequest(String postUrl, RequestBody postBody) {
 
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client;
+
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+        builder.connectTimeout(60, TimeUnit.SECONDS);
+        builder.readTimeout(60, TimeUnit.SECONDS);
+        builder.writeTimeout(60, TimeUnit.SECONDS);
+        client = builder.build();
 
         Request request = new Request.Builder()
                 .url(postUrl)
@@ -331,22 +373,34 @@ public class Capture extends AppCompatActivity {
         }
     }
 
-    private void updateNames(byte[] data){
+    private void update(byte[] data){
         int index = 0;
         while (data[index] != (byte)SEPARATOR_CHAR){
             index++;
         }
         byte[] name = Arrays.copyOfRange(data,0,index);
-        byte[] description;
-        if (index+1 >= data.length){
-            description = new byte[0];
-        } else {
-           description = Arrays.copyOfRange(data,index+1,data.length);
+        index++;
+        int shirtStart = index;
+        while (data[index] != (byte)SEPARATOR_CHAR){
+            index++;
         }
+        byte[] shirtData = Arrays.copyOfRange(data,shirtStart,index);
+        index++;
+        int pantsStart = index;
+        while (data[index] != (byte)SEPARATOR_CHAR){
+            index++;
+        }
+        byte[] pantsData = Arrays.copyOfRange(data,pantsStart,index);
+        index++;
+        byte[] movData = Arrays.copyOfRange(data,index,data.length);
         String nameStr = new String(name);
-        String descStr = new String(description);
-        if (!currentNames.containsKey(nameStr)){
-            currentNames.put(nameStr,descStr);
+        String shirtStr = new String(shirtData);
+        String pantsStr = new String(pantsData);
+        String movStr = new String(movData);
+        if (!names.contains(nameStr)){
+            currentShirts.put(nameStr,shirtStr);
+            currentPants.put(nameStr,pantsStr);
+            currentMoves.put(nameStr,movStr);
             names.add(nameStr);
         }
         updateView();
@@ -355,7 +409,7 @@ public class Capture extends AppCompatActivity {
     private void updateView(){
         String nameList = "";
         for (String name : names){
-            nameList = nameList + "\n" + name;
+            nameList = nameList + "\n" + name + "\t" + currentMoves.get(name);
         }
         people_list.setText(nameList);
     }

@@ -1,2 +1,4 @@
+include ':posenet'
+include ':tensorflow'
 include ':app'
 rootProject.name = "BLE Photo Identifier"
