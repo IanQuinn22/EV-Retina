@@ -102,6 +102,11 @@ public class Capture extends AppCompatActivity {
         bluetoothLeScanner = btAdapter.getBluetoothLeScanner();
         settings = new ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .setLegacy(false)
+                .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
+                .setNumOfMatches(ScanSettings.MATCH_NUM_MAX_ADVERTISEMENT)
+                .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                .setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
                 .build();
         filters = new ArrayList<ScanFilter>();
         byte[] test = new byte[24];
@@ -110,7 +115,8 @@ public class Capture extends AppCompatActivity {
             test[i] = (byte)1;
             mask[i] = (byte)0;
         }
-        filters.add(new ScanFilter.Builder().setServiceData(SERVICE_UUID,test,mask).build());
+        //filters.add(new ScanFilter.Builder().setServiceData(SERVICE_UUID,test,mask).build());
+        filters.add(new ScanFilter.Builder().setServiceUuid(SERVICE_UUID).build());
     }
 
     private void createUI(){
@@ -386,21 +392,13 @@ public class Capture extends AppCompatActivity {
         }
         byte[] shirtData = Arrays.copyOfRange(data,shirtStart,index);
         index++;
-        int pantsStart = index;
-        while (data[index] != (byte)SEPARATOR_CHAR){
-            index++;
-        }
-        byte[] pantsData = Arrays.copyOfRange(data,pantsStart,index);
-        index++;
-        byte[] movData = Arrays.copyOfRange(data,index,data.length);
+        byte[] pantsData = Arrays.copyOfRange(data,index,data.length);
         String nameStr = new String(name);
         String shirtStr = new String(shirtData);
         String pantsStr = new String(pantsData);
-        String movStr = new String(movData);
         if (!names.contains(nameStr)){
             currentShirts.put(nameStr,shirtStr);
             currentPants.put(nameStr,pantsStr);
-            currentMoves.put(nameStr,movStr);
             names.add(nameStr);
         }
         updateView();

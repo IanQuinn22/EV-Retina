@@ -6,13 +6,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 public class Assembler {
-
     private static HashMap<String,byte[]> gatherMap = new HashMap<>();
     private static HashMap<String,Integer> expectMap = new HashMap<>();
 
     public static byte[] gather(String address,byte[] data){
         if (!gatherMap.containsKey(address)){
             if (data[0] == (byte)1){
+                Log.e("START:", Long.toString(System.currentTimeMillis()));
                 if (data[1] == (byte)1){
                     int null_ind = data.length;
                     for (int k = 2; k < data.length; k++){
@@ -45,6 +45,7 @@ public class Assembler {
                 }
                 gatherMap.put(address,conjoin);
                 if (data[1] == (byte)1){
+                    Log.e("END:", Long.toString(System.currentTimeMillis()));
                     gatherMap.remove(address);
                     expectMap.remove(address);
                     int null_ind = conjoin.length;
@@ -54,7 +55,7 @@ public class Assembler {
                             break;
                         }
                     }
-                    conjoin = Arrays.copyOfRange(conjoin,0,conjoin.length-22+null_ind-2);
+                    conjoin = Arrays.copyOfRange(conjoin,0,conjoin.length-245+null_ind);
                     return conjoin;
                 }
             }
@@ -66,5 +67,4 @@ public class Assembler {
         gatherMap.clear();
         expectMap.clear();
     }
-
 }

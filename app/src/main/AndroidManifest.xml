@@ -29,13 +29,16 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
         <service
-            android:name=".ActivityIntentService"
+            android:name=".BeaconBroadcast"
             android:exported="false"></service>
+        <service
+            android:name=".ActivityIntentService"
+            android:exported="false" />
 
         <activity
             android:name=".TestActivity"
             android:exported="true"
-            android:label="@string/tfe_pn_app_name"></activity>
+            android:label="@string/tfe_pn_app_name" />
         <activity android:name=".Capture" />
         <activity android:name=".CameraActivity" />
         <activity android:name=".MainActivity">

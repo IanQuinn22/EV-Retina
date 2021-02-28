@@ -3,6 +3,8 @@ package android.e.blephotoidentifier;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
+import android.bluetooth.le.AdvertisingSetCallback;
+import android.bluetooth.le.AdvertisingSetParameters;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.os.ParcelUuid;
 import android.util.Log;
@@ -10,15 +12,14 @@ import android.util.Log;
 import java.util.Arrays;
 
 public class Fragmenter {
-
     private static final String TAG = "FRAGMENTER";
-    private static final int ADV_TIME = 220;
+    private static final int ADV_TIME = 420;
+    private static final int ADV_TIME_SINGLE = 10000;
     private static boolean advertise_flag = true;
     private static long endTime;
-    private static byte[] zero_byte = new byte [] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 
-    public static void advertise(final BluetoothLeAdvertiser adv, int max_size, byte[] data, ParcelUuid uuid, final AdvertiseSettings advertiseSettings, final AdvertiseCallback advertiseCallback){
+    public static void advertise(final BluetoothLeAdvertiser adv, int max_size, byte[] data, ParcelUuid uuid, final AdvertisingSetParameters advertiseSettings, final AdvertisingSetCallback advertiseCallback){
         int full_packet_count = data.length / (max_size-2);
         int last_packet_bytes = data.length % (max_size-2);
         int packet_num = 1;
@@ -35,14 +36,17 @@ public class Fragmenter {
                 for (int i = 0; i < data.length; i++){
                     adv_packet[i+2] = data[i];
                 }
-
                 AdvertiseData advertiseData = new AdvertiseData.Builder()
                         .addServiceData(uuid,adv_packet)
-                        //.addServiceUuid(uuid)
+                        .addServiceUuid(uuid)
                         .setIncludeTxPowerLevel(false)
-                        .setIncludeDeviceName(false)
+                        .setIncludeDeviceName(true)
                         .build();
-                adv.startAdvertising(advertiseSettings, advertiseData, advertiseCallback);
+                adv.startAdvertisingSet(advertiseSettings, advertiseData, null, null, null, advertiseCallback);
+                endTime = System.currentTimeMillis() + ADV_TIME_SINGLE;
+                while (System.currentTimeMillis() < endTime){
+                }
+                adv.stopAdvertisingSet(advertiseCallback);
             }
             else {
                 while (packet_num <= full_packet_count){
@@ -62,17 +66,17 @@ public class Fragmenter {
                     }
                     AdvertiseData advertiseData = new AdvertiseData.Builder()
                             .addServiceData(uuid,adv_packet)
-                            //.addServiceUuid(uuid)
+                            .addServiceUuid(uuid)
                             .setIncludeTxPowerLevel(false)
-                            .setIncludeDeviceName(false)
+                            .setIncludeDeviceName(true)
                             .build();
 
-                    adv.startAdvertising(advertiseSettings,advertiseData,advertiseCallback);
+                    adv.startAdvertisingSet(advertiseSettings, advertiseData, null, null, null, advertiseCallback);
                     Log.i("Packet Number: ",Integer.toString(packet_num));
                     endTime = System.currentTimeMillis() + ADV_TIME;
                     while (System.currentTimeMillis() < endTime){
                     }
-                    adv.stopAdvertising(advertiseCallback);
+                    adv.stopAdvertisingSet(advertiseCallback);
                     packet_num++;
                 }
                 if (last_packet_bytes != 0){
@@ -87,28 +91,27 @@ public class Fragmenter {
                     }
                     AdvertiseData advertiseData = new AdvertiseData.Builder()
                             .addServiceData(uuid,adv_packet)
-                            //.addServiceUuid(uuid)
+                            .addServiceUuid(uuid)
                             .setIncludeTxPowerLevel(false)
-                            .setIncludeDeviceName(false)
+                            .setIncludeDeviceName(true)
                             .build();
 
-                    adv.startAdvertising(advertiseSettings, advertiseData, advertiseCallback);
+                    adv.startAdvertisingSet(advertiseSettings, advertiseData, null, null, null, advertiseCallback);
                     endTime = System.currentTimeMillis() + ADV_TIME;
                     Log.i("Packet Number: ","Last Packet");
                     while (System.currentTimeMillis() < endTime){
                     }
-                    adv.stopAdvertising(advertiseCallback);
+                    adv.stopAdvertisingSet(advertiseCallback);
                 }
                 packet_num = 1;
             }
             loopcount++;
         }
-        adv.stopAdvertising(advertiseCallback);
+        adv.stopAdvertisingSet(advertiseCallback);
 
     }
 
     public static void setAdvertiseFlag(boolean set){
         advertise_flag = set;
     }
-
 }

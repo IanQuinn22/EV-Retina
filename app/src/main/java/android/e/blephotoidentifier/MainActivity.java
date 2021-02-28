@@ -86,8 +86,11 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         broadcast.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Fragmenter.setAdvertiseFlag(true);
-                broadcastInfo();
+                Intent intent = new Intent(view.getContext(), BeaconBroadcast.class);
+                intent.putExtra("name",name.getText().toString());
+                intent.putExtra("shirt",shirt.getText().toString());
+                intent.putExtra("pants",pants.getText().toString());
+                startService(intent);
             }
         });
         camera.setOnClickListener(new View.OnClickListener() {
@@ -96,15 +99,6 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                 startActivity(new Intent(MainActivity.this,Capture.class));
             }
         });
-    }
-
-    private void broadcastInfo(){
-        String nameStr = name.getText().toString();
-        //String descStr = description.getText().toString();
-        String shirtStr = shirt.getText().toString();
-        String pantsStr = pants.getText().toString();
-        String bcStr = nameStr + "*" + shirtStr + "*" + pantsStr + "*" + movement;
-        Fragmenter.advertise(adv,24,bcStr.getBytes(),SERVICE_UUID,advertiseSettings,advertiseCallback);
     }
 
     private void initializeBT(){
