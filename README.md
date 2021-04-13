@@ -37,7 +37,7 @@ byte array of Max Packet Size as a parameter.
 * Capture.postRequest: This function attempts to send the photo to the cloud server.
 * Capture.sendNames: This function sends the names that the device has received from nearby users to the cloud server.
 ## Issues
-Currently, the application has 2 portions that are not fully operation: The Activity Detection subsystem and the Augmented Reality subsection. As they are implemented now, they should not be considered 
+Currently, the application has 2 portions that are not fully operational: The Activity Detection subsystem and the Augmented Reality subsection. As they are implemented now, they should not be considered 
 a functional part of EV-Retina.
 ## Future Work
 The main aspects of this project that should be worked on in the future are the Activity Detection subsystem and the Augmented Reality subsystem.
