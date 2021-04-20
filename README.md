@@ -21,6 +21,7 @@ the application on your device. You will need to give the application the follow
 * ACTIVITY_RECOGNITION
 ## Parameters
 For this application, the adjustable parameters are all regarding the BLE Beacon Broadcasting. They are described below:
+* Server IP Address: In order to run effectively, the client application must know the IP address of the server. You must update this value based on the IP address of the machine that the cloud server is running on. To do this, fing the server IP address variable in the Capture.java file and update it accordingly.
 * Advertising Interval: The interval between packet advertisiments. This is currently set to high, but can be modified.
 * Tx Power Level: Measures the strength of the advertisement signal. This is currently set to medium, but can be modified.
 * Minimum advertising time: Minimum amount of time that an entire broadcast will be advertised for. Currently this is set to 20 seconds.
