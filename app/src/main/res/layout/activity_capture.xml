@@ -19,9 +19,9 @@
 
     <TextView
         android:id="@+id/people_list"
-        android:layout_width="326dp"
-        android:layout_height="205dp"
-        android:layout_marginTop="30dp"
+        android:layout_width="333dp"
+        android:layout_height="131dp"
+        android:layout_marginTop="20dp"
         android:text="No people captured"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.494"
@@ -32,7 +32,7 @@
         android:id="@+id/textView3"
         android:layout_width="175dp"
         android:layout_height="53dp"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="30dp"
         android:text="Take Photos"
         android:textSize="30sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -67,7 +67,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tensorflow" />
+        app:layout_constraintTop_toBottomOf="@+id/ar" />
 
     <Button
         android:id="@+id/tensorflow"
@@ -78,4 +78,14 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/facial_recognition" />
+
+    <Button
+        android:id="@+id/ar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="AR"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tensorflow" />
 </androidx.constraintlayout.widget.ConstraintLayout>

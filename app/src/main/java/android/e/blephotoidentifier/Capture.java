@@ -19,6 +19,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.ParcelUuid;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -27,15 +28,30 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.ar.core.ArCoreApk;
+import com.google.ar.core.AugmentedFace;
+import com.google.ar.core.CameraConfig;
+import com.google.ar.core.CameraConfigFilter;
+import com.google.ar.core.Config;
+import com.google.ar.core.Frame;
+import com.google.ar.core.Pose;
+import com.google.ar.core.Session;
+import com.google.ar.core.TrackingState;
+import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
+
 import org.tensorflow.lite.examples.posenet.lib.Posenet;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -59,6 +75,7 @@ public class Capture extends AppCompatActivity {
             ParcelUuid.fromString("0000FEAA-0000-1000-8000-00805F9B34FB");
     private static final String SERVER_IP = "192.168.1.218";
     private static final String SERVER_PORT = "5000";
+    private static final boolean face = true;
 
     private BluetoothManager manager;
     private BluetoothAdapter btAdapter;
@@ -71,12 +88,15 @@ public class Capture extends AppCompatActivity {
     private HashMap<String,String> currentPants = new HashMap<String,String>();
     private HashMap<String,String> currentMoves = new HashMap<String,String>();
     String currentPhotoPath;
+    private boolean mUserRequestedInstall = true;
+    private Session mSession;
 
     private TextView people_list;
     private Button collect;
     private Button take_photo;
     private Button facial_recognition;
     private Button tensorflow;
+    private Button ar;
     private Button back;
 
     @Override
@@ -85,6 +105,88 @@ public class Capture extends AppCompatActivity {
         setContentView(R.layout.activity_capture);
         initializeBt();
         createUI();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // ARCore requires camera permission to operate.
+        if (!CameraPermissionHelper.hasCameraPermission(this)) {
+            CameraPermissionHelper.requestCameraPermission(this);
+            return;
+        }
+        try {
+            mSession = new Session(this, EnumSet.of(Session.Feature.FRONT_CAMERA));
+            Config config = new Config(mSession);
+            config.setAugmentedFaceMode(Config.AugmentedFaceMode.MESH3D);
+            mSession.configure(config);
+            mSession.setCameraTextureName(500);
+        } catch (Exception e) {
+            Log.e("ERROR", "Couldn't configure AR session");
+            return;  // mSession remains null, since session creation has failed.
+        }
+
+        // Ensure that Google Play Services for AR and ARCore device profile data are
+        // installed and up to date.
+        /*try {
+            if (mSession == null) {
+                switch (ArCoreApk.getInstance().requestInstall(this, mUserRequestedInstall)) {
+                    case INSTALLED:
+                        // Success: Safe to create the AR session.
+                        mSession = new Session(this);
+
+                        // Create a session config.
+                        Config config = new Config(mSession);
+
+                        // Do feature-specific operations here, such as enabling depth or turning on
+                        // support for Augmented Faces.
+
+                        // Create a camera config filter for the session.
+                        CameraConfigFilter filter = new CameraConfigFilter(mSession);
+                        // Return only camera configs that target 30 fps camera capture frame rate.
+                        filter.setTargetFps(EnumSet.of(CameraConfig.TargetFps.TARGET_FPS_30));
+                        List<CameraConfig> cameraConfigList = mSession.getSupportedCameraConfigs(filter);
+
+                        // Configure the session.
+                        mSession.setCameraConfig(cameraConfigList.get(0));
+                        mSession.configure(config);
+                        break;
+                    case INSTALL_REQUESTED:
+                        // When this method returns `INSTALL_REQUESTED`:
+                        // 1. ARCore pauses this activity.
+                        // 2. ARCore prompts the user to install or update Google Play
+                        //    Services for AR (market://details?id=com.google.ar.core).
+                        // 3. ARCore downloads the latest device profile data.
+                        // 4. ARCore resumes this activity. The next invocation of
+                        //    requestInstall() will either return `INSTALLED` or throw an
+                        //    exception if the installation or update did not succeed.
+                        mUserRequestedInstall = false;
+                        return;
+                }
+            }
+        } catch (UnavailableUserDeclinedInstallationException e) {
+            // Display an appropriate message to the user and return gracefully.
+            Toast.makeText(this, "TODO: handle exception " + e, Toast.LENGTH_LONG)
+                    .show();
+            return;
+        } catch (Exception e) {
+            return;  // mSession remains null, since session creation has failed.
+        }*/
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (!CameraPermissionHelper.hasCameraPermission(this)) {
+            Toast.makeText(this, "Camera permission is needed to run this application", Toast.LENGTH_LONG)
+                    .show();
+            if (!CameraPermissionHelper.shouldShowRequestPermissionRationale(this)) {
+                // Permission denied with checking "Do not ask again".
+                CameraPermissionHelper.launchPermissionSettings(this);
+            }
+            finish();
+        }
     }
 
     private void initializeBt(){
@@ -126,6 +228,7 @@ public class Capture extends AppCompatActivity {
         take_photo = findViewById((R.id.take_photo));
         facial_recognition = findViewById(R.id.facial_recognition);
         tensorflow = findViewById(R.id.tensorflow);
+        ar = findViewById(R.id.ar);
         collect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v){
@@ -160,6 +263,48 @@ public class Capture extends AppCompatActivity {
                 dispatchTensorFlowIntent();
             }
         });
+        ar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v){
+                if (face){
+                    try {
+                        mSession.resume();
+                        while (true){
+                            Frame frame = mSession.update();
+                            Collection<AugmentedFace> faces = mSession.getAllTrackables(AugmentedFace.class);
+                            if (faces.size() > 0){
+                                Log.e("Hey", Integer.toString(faces.size()));
+                            }
+                            for (AugmentedFace face : faces) {
+                                if (face.getTrackingState() == TrackingState.TRACKING) {
+                                    // UVs and indices can be cached as they do not change during the session.
+                                    FloatBuffer uvs = face.getMeshTextureCoordinates();
+                                    ShortBuffer indices = face.getMeshTriangleIndices();
+                                    // Center and region poses, mesh vertices, and normals are updated each frame.
+                                    Pose facePose = face.getCenterPose();
+                                    FloatBuffer faceVertices = face.getMeshVertices();
+                                    FloatBuffer faceNormals = face.getMeshNormals();
+                                    // Render the face using these values with OpenGL
+                                }
+                            }
+                        }
+                    } catch (Exception e){
+                        Log.e("Session error", "Couldn't start session.");
+                    }
+                } else {
+                    Intent sceneViewerIntent = new Intent(Intent.ACTION_VIEW);
+                    Uri intentUri =
+                            Uri.parse("https://arvr.google.com/scene-viewer/1.0").buildUpon()
+                                    .appendQueryParameter("file", "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/ToyCar/glTF/ToyCar.gltf")
+                                    .appendQueryParameter("mode", "ar_only")
+                                    .build();
+                    sceneViewerIntent.setData(intentUri);
+                    sceneViewerIntent.setPackage("com.google.ar.core");
+                    startActivity(sceneViewerIntent);
+                }
+            }
+        });
+        maybeEnableArButton();
     }
 
     public void scanLeDevice(final boolean enable) {
@@ -371,6 +516,27 @@ public class Capture extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    void maybeEnableArButton() {
+        ArCoreApk.Availability availability = ArCoreApk.getInstance().checkAvailability(this);
+        if (availability.isTransient()) {
+            // Continue to query availability at 5Hz while compatibility is checked in the background.
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    maybeEnableArButton();
+                }
+            }, 200);
+        }
+        if (availability.isSupported()) {
+            ar.setVisibility(View.VISIBLE);
+            ar.setEnabled(true);
+        } else { // The device is unsupported or unknown.
+            ar.setVisibility(View.INVISIBLE);
+            ar.setEnabled(false);
+            Log.e("AR ERROR", "AR not supported");
+        }
     }
 
     private void setEnabledViews(boolean enabled, View... views) {
