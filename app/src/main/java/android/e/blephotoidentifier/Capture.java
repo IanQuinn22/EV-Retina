@@ -75,7 +75,6 @@ public class Capture extends AppCompatActivity {
             ParcelUuid.fromString("0000FEAA-0000-1000-8000-00805F9B34FB");
     private static final String SERVER_IP = "192.168.1.218";
     private static final String SERVER_PORT = "5000";
-    private static final boolean face = true;
 
     private BluetoothManager manager;
     private BluetoothAdapter btAdapter;
@@ -116,7 +115,7 @@ public class Capture extends AppCompatActivity {
             CameraPermissionHelper.requestCameraPermission(this);
             return;
         }
-        try {
+        /*try {
             mSession = new Session(this, EnumSet.of(Session.Feature.FRONT_CAMERA));
             Config config = new Config(mSession);
             config.setAugmentedFaceMode(Config.AugmentedFaceMode.MESH3D);
@@ -125,11 +124,11 @@ public class Capture extends AppCompatActivity {
         } catch (Exception e) {
             Log.e("ERROR", "Couldn't configure AR session");
             return;  // mSession remains null, since session creation has failed.
-        }
+        }*/
 
         // Ensure that Google Play Services for AR and ARCore device profile data are
         // installed and up to date.
-        /*try {
+        try {
             if (mSession == null) {
                 switch (ArCoreApk.getInstance().requestInstall(this, mUserRequestedInstall)) {
                     case INSTALLED:
@@ -169,10 +168,12 @@ public class Capture extends AppCompatActivity {
             // Display an appropriate message to the user and return gracefully.
             Toast.makeText(this, "TODO: handle exception " + e, Toast.LENGTH_LONG)
                     .show();
+            Log.e("NO", "AR CORE");
             return;
         } catch (Exception e) {
+            Log.e("NO", "AR CORE");
             return;  // mSession remains null, since session creation has failed.
-        }*/
+        }
     }
 
     @Override
@@ -266,42 +267,15 @@ public class Capture extends AppCompatActivity {
         ar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v){
-                if (face){
-                    try {
-                        mSession.resume();
-                        while (true){
-                            Frame frame = mSession.update();
-                            Collection<AugmentedFace> faces = mSession.getAllTrackables(AugmentedFace.class);
-                            if (faces.size() > 0){
-                                Log.e("Hey", Integer.toString(faces.size()));
-                            }
-                            for (AugmentedFace face : faces) {
-                                if (face.getTrackingState() == TrackingState.TRACKING) {
-                                    // UVs and indices can be cached as they do not change during the session.
-                                    FloatBuffer uvs = face.getMeshTextureCoordinates();
-                                    ShortBuffer indices = face.getMeshTriangleIndices();
-                                    // Center and region poses, mesh vertices, and normals are updated each frame.
-                                    Pose facePose = face.getCenterPose();
-                                    FloatBuffer faceVertices = face.getMeshVertices();
-                                    FloatBuffer faceNormals = face.getMeshNormals();
-                                    // Render the face using these values with OpenGL
-                                }
-                            }
-                        }
-                    } catch (Exception e){
-                        Log.e("Session error", "Couldn't start session.");
-                    }
-                } else {
-                    Intent sceneViewerIntent = new Intent(Intent.ACTION_VIEW);
-                    Uri intentUri =
-                            Uri.parse("https://arvr.google.com/scene-viewer/1.0").buildUpon()
-                                    .appendQueryParameter("file", "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/ToyCar/glTF/ToyCar.gltf")
-                                    .appendQueryParameter("mode", "ar_only")
-                                    .build();
-                    sceneViewerIntent.setData(intentUri);
-                    sceneViewerIntent.setPackage("com.google.ar.core");
-                    startActivity(sceneViewerIntent);
-                }
+                Intent sceneViewerIntent = new Intent(Intent.ACTION_VIEW);
+                Uri intentUri =
+                        Uri.parse("https://arvr.google.com/scene-viewer/1.0").buildUpon()
+                                .appendQueryParameter("file", "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/ToyCar/glTF/ToyCar.gltf")
+                                .appendQueryParameter("mode", "ar_only")
+                                .build();
+                sceneViewerIntent.setData(intentUri);
+                sceneViewerIntent.setPackage("com.google.ar.core");
+                startActivity(sceneViewerIntent);
             }
         });
         maybeEnableArButton();
